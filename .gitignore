@@ -28,3 +28,15 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+.venv/
+
+# PRIVEX — never commit user data, downloaded models or build output
+privex/backend/outputs/
+privex/backend/models/asr/
+privex/frontend/dist/
+eval/data/
+privex/backend/eval/data/
+dist/
+build/
+packaging/privex.ico
+.pytest_cache/
