@@ -40,3 +40,4 @@ dist/
 build/
 packaging/privex.ico
 .pytest_cache/
+privex/backend/eval/results/*.json

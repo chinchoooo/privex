@@ -1,0 +1,111 @@
+
+Docs: 3000   76.4 ms/doc
+Direct identifiers  leak 7.5% of characters   span recall 0.929   span precision 0.924   F1 0.927
+Quasi identifiers   7.4% of characters hidden (not penalised)
+Over-redaction      0.8% of non-identifier characters hidden
+
+gold label                         scope       n  recall
+user_name                          direct    456   0.588
+swift_bic                          direct    172   0.686
+unique_id                          direct     48   0.771
+postcode                           direct    200   0.790
+password                           direct    233   0.794
+biometric_identifier               direct    361   0.834
+device_identifier                  direct     73   0.849
+certificate_license_number         direct     80   0.887
+coordinate                         direct    239   0.895
+http_cookie                        direct    165   0.897
+api_key                            direct    133   0.902
+employee_id                        direct    279   0.903
+cvv                                direct    144   0.903
+first_name                         direct   2554   0.914
+pin                                direct    208   0.918
+tax_id                             direct     39   0.923
+ipv6                               direct     99   0.929
+phone_number                       direct    712   0.934
+health_plan_beneficiary_number     direct    303   0.934
+street_address                     direct    520   0.946
+customer_id                        direct    618   0.953
+license_plate                      direct    134   0.955
+credit_debit_card                  direct    404   0.958
+account_number                     direct    488   0.961
+vehicle_identifier                 direct    140   0.979
+date_of_birth                      direct    515   0.979
+last_name                          direct   1800   0.982
+medical_record_number              direct    297   0.983
+fax_number                         direct    232   0.987
+email                              direct   1650   0.994
+bank_routing_number                direct    250   0.996
+mac_address                        direct    147   1.000
+ipv4                               direct    184   1.000
+ssn                                direct    185   1.000
+sexuality                          quasi      88   0.000
+gender                             quasi     221   0.000
+education_level                    quasi     248   0.000
+blood_type                         quasi     150   0.000
+employment_status                  quasi     335   0.000
+time                               quasi     916   0.004
+age                                quasi     246   0.004
+date_time                          quasi     434   0.009
+language                           quasi     248   0.012
+url                                quasi    1161   0.016
+date                               quasi    2339   0.018
+occupation                         quasi    1096   0.019
+political_view                     quasi     182   0.044
+religious_belief                   quasi     164   0.055
+country                            quasi     715   0.073
+race_ethnicity                     quasi     316   0.136
+county                             quasi     214   0.187
+company_name                       quasi    1630   0.193
+state                              quasi     521   0.298
+city                               quasi     572   0.350
+national_id                        quasi      76   0.711
+
+PRIVEX type             n precision
+PASSPORT                4     0.750
+PERSON               4100     0.811
+CREDENTIAL            826     0.868
+SSN                   237     0.928
+GOV_ID               2209     0.962
+LOCATION              191     0.974
+ID_NUMBER              77     0.974
+ADDRESS               621     0.976
+VEHICLE_ID            241     0.983
+CVV                   134     0.985
+IP_ADDRESS            351     0.986
+SWIFT_BIC             116     0.991
+PHONE                 921     0.996
+OTP                   234     0.996
+CREDIT_CARD           359     0.997
+BANK_ACCOUNT          537     0.998
+EMAIL                1642     1.000
+DATE_OF_BIRTH         515     1.000
+DEVICE_ID             120     1.000
+AADHAAR                42     1.000
+POSTAL_CODE            65     1.000
+DRIVER_LICENSE         11     1.000
+IBAN                    1     1.000
+
+Sample misses (direct identifiers left visible):
+  first_name                   'Juno'                           …9f1b9b7e3d4f0f2c8b9a7c | Juno | 1974-02-09 | Fingerpri…
+  coordinate                   'Latitude: 56.0111, Longitude: 92.8733' …e coordinate of Achin is Latitude: 56.0111, Longitude: 92.8733. In case of an emergency…
+  user_name                    'eduardo1985'                    …atus,Transaction Details ⏎ eduardo1985,Login,2024-10-20T04:53:1…
+  user_name                    'Prerana_artist'                 …----|----------------| ⏎ | Prerana_artist   | K9$gH2mZpW5    | C34…
+  phone_number                 '043 874-1965'                   …nquiries, please contact 043 874-1965 or email zinhle.m@capeau…
+  user_name                    'r.gad'                          …rm is to be completed by r.gad, who will be using the s…
+  first_name                   'Tae'                            …Tae, a 44 year old chef, has…
+  unique_id                    '5f9f1b9b7e3d4f0f2c8b9a7c'       …------------|--------| ⏎ | 5f9f1b9b7e3d4f0f2c8b9a7c | Juno | 1974-02-09 | Fi…
+  first_name                   'Joon'                           …Joon Kim, born on 1992-02-24,…
+  last_name                    'Ivanov'                         …on in premiums | Nikolay Ivanov | ⏎ |               |     …
+
+Sample false positives (redacted, not an identifier):
+  PERSON         'Ruby Flare Pearl'           [spaCy NER tagged PERSON (3 tokens)] …ial Silver Metallic, and Ruby Flare Pearl ⏎ - **License Plate**: 5JM…
+  PERSON         'Deliverables:**'            [spaCy NER tagged PERSON (1 token)] …erv.sy. ⏎  ⏎ **Timelines and Deliverables:** ⏎ Services will commence u…
+  PERSON         'Jumping Lunges'             [spaCy NER tagged PERSON (2 tokens)] …   | 3 minutes| 30s  | ⏎ | Jumping Lunges       | 3 minutes| 30s  …
+  PERSON         'Sure'                       [matches name_field pattern] …rself? ⏎  ⏎ **Participant:** Sure. I am a Korean male, 51 …
+  PERSON         'MAC'                        [spaCy NER tagged PERSON (1 token)] …under investigation. The MAC address 00:3F:66:1A:7C:2…
+  GOV_ID         '231228-001'                 [matches labelled_id pattern] …rt ⏎  ⏎ **Incident Number:** 231228-001 ⏎  ⏎ **Date and Time of Occu…
+  CREDENTIAL     'Management**'               [matches credential_field pattern] …ty Options ⏎  ⏎ 1. **API Key Management**: ⏎    - Your current **api…
+  PERSON         'Customer'                   [repeats a value detected elsewhere in the document] …ber:** 2023-11-15-001 ⏎  ⏎ **Customer Name:** Jennifer Winding…
+  PERSON         'Camry                              ' [spaCy NER tagged PERSON (1 token)] …| Vehicle Model        | Camry                              | ⏎ | Vehicle Year         …
+  CREDENTIAL     'Issues**'                   [matches credential_field pattern] …for Network Connectivity Issues** ⏎  ⏎ Network connectivity is…
