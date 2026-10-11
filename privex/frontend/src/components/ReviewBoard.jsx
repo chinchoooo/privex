@@ -3,6 +3,7 @@ import { applyRedactions, downloadUrl } from '../api/client'
 import styles from './ReviewBoard.module.css'
 
 const TYPE_COLOR = { face: '#ff3356', text: '#ffb300', default: '#4488ff' }
+const STYLES = ['black', 'blur', 'pixelate']
 
 export default function ReviewBoard({ data, onReset }) {
   // proposals: each has { id, type, label, reason, sensitive, approved, bbox, value?, context? }
@@ -14,12 +15,13 @@ export default function ReviewBoard({ data, onReset }) {
   const [result,       setResult]       = useState(null)
   const [error,        setError]        = useState(null)
   const [filterMode,   setFilterMode]   = useState('all') // all | sensitive | safe
+  const [redactStyle,  setRedactStyle]  = useState('black')
   const canvasRef  = useRef()
   const imageRef   = useRef()
 
   const imgW = data.image_w || 800
   const imgH = data.image_h || 600
-  const src  = `data:image/jpeg;base64,${data.preview_b64}`
+  const src  = `data:image/jpeg;base64,${data.preview_jpg_b64}`
 
   // Draw redaction overlays on canvas whenever proposals or hover changes
   useEffect(() => {
@@ -35,8 +37,7 @@ export default function ReviewBoard({ data, onReset }) {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, cw, ch)
 
-    proposals.forEach(p => {
-      const { x, y, w, h } = p.bbox
+    proposals.forEach(p => (p.boxes?.length ? p.boxes : [p.bbox]).forEach(({ x, y, w, h }) => {
       if (!w || !h) return
       const rx = x * scaleX, ry = y * scaleY
       const rw = w * scaleX, rh = h * scaleY
@@ -71,7 +72,7 @@ export default function ReviewBoard({ data, onReset }) {
         ctx.lineWidth = 2
         ctx.strokeRect(rx - 1, ry - 1, rw + 2, rh + 2)
       }
-    })
+    }))
   }, [proposals, hoveredId, imgW, imgH])
 
   const toggle = (id) => {
@@ -89,10 +90,11 @@ export default function ReviewBoard({ data, onReset }) {
     setError(null)
     try {
       const approvedBoxes = proposals
-        .filter(p => p.approved && p.bbox.w > 0)
-        .map(p => p.bbox)
+        .filter(p => p.approved)
+        .flatMap(p => (p.boxes?.length ? p.boxes : [p.bbox]))
+        .filter(b => b.w > 0 && b.h > 0)
 
-      const resp = await applyRedactions(data.session_token, approvedBoxes)
+      const resp = await applyRedactions(data.session_token, approvedBoxes, redactStyle)
       setResult(resp.data)
     } catch (e) {
       setError(e.response?.data?.detail || e.message)
@@ -142,15 +144,19 @@ export default function ReviewBoard({ data, onReset }) {
         <div>
           <h2 className={styles.boardTitle}>Human Review</h2>
           <p className={styles.boardSub}>
-            LLM found <span className={styles.hi}>{sensitiveCount} sensitive</span> and{' '}
-            <span className={styles.safe}>{safeCount} safe</span> items.
+            Found <span className={styles.hi}>{sensitiveCount} sensitive</span> and{' '}
+            <span className={styles.safe}>{safeCount} low-risk</span> items.
             Toggle to correct mistakes.
           </p>
         </div>
         <div className={styles.headActions}>
-          <button className={styles.btnSm} onClick={approveSensitive}>AI Suggestion</button>
+          <button className={styles.btnSm} onClick={approveSensitive}>Suggested</button>
           <button className={styles.btnSm} onClick={approveAll}>Approve All</button>
           <button className={`${styles.btnSm} ${styles.btnDim}`} onClick={dismissAll}>Dismiss All</button>
+          <select className={styles.btnSm} value={redactStyle} onChange={e => setRedactStyle(e.target.value)}
+                  title="Redaction style">
+            {STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
       </div>
 
@@ -195,7 +201,7 @@ export default function ReviewBoard({ data, onReset }) {
               >
                 {f === 'all' ? `All (${proposals.length})` :
                  f === 'sensitive' ? `⚠ Sensitive (${sensitiveCount})` :
-                 `✓ Safe (${safeCount})`}
+                 `✓ Low-risk (${safeCount})`}
               </button>
             ))}
           </div>
@@ -226,7 +232,7 @@ export default function ReviewBoard({ data, onReset }) {
                           background:   p.sensitive ? 'rgba(255,51,86,.06)' : 'rgba(0,230,118,.06)',
                         }}
                       >
-                        {p.sensitive ? '⚠ SENSITIVE' : '✓ SAFE'}
+                        {p.sensitive ? '⚠ SENSITIVE' : '✓ LOW-RISK'} {Math.round((p.confidence ?? 0) * 100)}%
                       </span>
                     </div>
                     <button
@@ -240,7 +246,7 @@ export default function ReviewBoard({ data, onReset }) {
 
                   {p.reason && (
                     <div className={styles.reason}>
-                      <span className={styles.reasonIcon}>🧠</span> {p.reason}
+                      <span className={styles.reasonIcon}>ⓘ</span> {p.reason}
                     </div>
                   )}
 

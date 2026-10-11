@@ -1,70 +1,52 @@
 import { useState, useCallback } from 'react'
-import { scanImage, scanAudio, scanText, scanVideo } from '../api/client'
+import { scanText, startAudioJob, startVideoJob, waitForJob } from '../api/client'
 
-const STAGES = ['upload', 'detect', 'classify', 'redact', 'done']
+// Map backend job progress (0..1) onto the pipeline stages shown in the UI.
+const stageFor = p => (p < 0.1 ? 'upload' : p < 0.6 ? 'detect' : p < 0.95 ? 'redact' : 'done')
 
 export function useScan() {
-  const [stage,      setStage]      = useState(null)   // null | 'upload'|'detect'|'classify'|'redact'|'done'|'error'
-  const [result,     setResult]     = useState(null)
-  const [error,      setError]      = useState(null)
-  const [progress,   setProgress]   = useState(0)
-  const [logs,       setLogs]       = useState([])
+  const [stage,    setStage]    = useState(null)   // null | upload | detect | classify | redact | done | error
+  const [result,   setResult]   = useState(null)
+  const [error,    setError]    = useState(null)
+  const [progress, setProgress] = useState(0)
+  const [logs,     setLogs]     = useState([])
 
   const addLog = useCallback((level, msg) => {
     setLogs(prev => [...prev, { level, msg, ts: new Date().toLocaleTimeString() }])
   }, [])
 
-  const sleep = ms => new Promise(r => setTimeout(r, ms))
-
   const run = useCallback(async (mode, payload) => {
-    setResult(null)
-    setError(null)
-    setLogs([])
-    setProgress(0)
-
+    setResult(null); setError(null); setLogs([]); setProgress(0)
     try {
-      // Step through pipeline stages
       setStage('upload')
-      addLog('info', `Starting ${mode} scan...`)
-      await sleep(300)
+      addLog('info', `Starting ${mode} scan (local, no LLM)…`)
+      let data
 
-      setStage('detect')
-      addLog('info', `Routing to detection pipeline...`)
-
-      let resp
-      if (mode === 'image') {
-        resp = await scanImage(payload, p => setProgress(p))
-      } else if (mode === 'audio') {
-        resp = await scanAudio(payload, p => setProgress(p))
-      } else if (mode === 'video') {
-        addLog('info', 'Processing video — this may take 30-60 seconds...')
-        resp = await scanVideo(payload, p => setProgress(p))
+      if (mode === 'text') {
+        setStage('detect')
+        data = (await scanText(payload)).data
       } else {
-        resp = await scanText(payload)
+        const start = mode === 'audio' ? startAudioJob : startVideoJob
+        const { data: job } = await start(payload, p => setProgress(p))
+        addLog('info', `Uploaded — job ${job.id.slice(0, 8)} queued`)
+        let lastMsg = ''
+        data = await waitForJob(job.id, j => {
+          setProgress(Math.round(j.progress * 100))
+          setStage(stageFor(j.progress))
+          if (j.message && j.message !== lastMsg && !/^reading text|^redacting frame/.test(j.message)) {
+            addLog('info', j.message); lastMsg = j.message
+          }
+        })
       }
-
-      setStage('classify')
-      addLog('info', `LLM classification complete`)
-      await sleep(200)
-
-      setStage('redact')
-      addLog('info', `Applying redactions...`)
-      await sleep(300)
 
       setStage('done')
-      const data = resp.data
-      addLog('info', `Scan complete — ${data.entity_count ?? 0} entities detected`)
-      if (data.sensitive) {
-        addLog('warn', `Sensitive data found — redacted output ready`)
-      } else {
-        addLog('info', `No sensitive data detected`)
-      }
+      addLog('info', `Scan complete — ${data.entity_count ?? 0} sensitive items`)
+      addLog(data.sensitive ? 'warn' : 'info',
+        data.sensitive ? 'Sensitive data found — redacted output ready' : 'No sensitive data detected')
       setResult({ ...data, mode })
-
     } catch (e) {
       const msg = e.response?.data?.detail || e.message || 'Unknown error'
-      setStage('error')
-      setError(msg)
+      setStage('error'); setError(msg)
       addLog('error', `Scan failed: ${msg}`)
     }
   }, [addLog])

@@ -1,15 +1,7 @@
-import { useState, useEffect } from 'react'
-import { checkHealth } from '../api/client'
 import styles from './Header.module.css'
 
-export default function Header() {
-  const [online, setOnline] = useState(null)
-
-  useEffect(() => {
-    checkHealth()
-      .then(() => setOnline(true))
-      .catch(() => setOnline(false))
-  }, [])
+export default function Header({ health }) {
+  const online = health === null ? null : !!health
 
   return (
     <header className={styles.header}>
@@ -19,9 +11,9 @@ export default function Header() {
           PRIVEX
         </div>
         <div className={styles.right}>
-          <span className={styles.tagline}>AI Privacy Firewall</span>
+          <span className={styles.tagline}>Local Privacy Firewall</span>
           <span className={`${styles.status} ${online === true ? styles.ok : online === false ? styles.err : styles.checking}`}>
-            {online === null ? '◌ CONNECTING' : online ? '● API ONLINE' : '✕ API OFFLINE'}
+            {online === null ? '◌ CONNECTING' : online ? '● ENGINE ONLINE' : '✕ ENGINE OFFLINE'}
           </span>
         </div>
       </div>

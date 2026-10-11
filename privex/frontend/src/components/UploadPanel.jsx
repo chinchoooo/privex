@@ -3,12 +3,12 @@ import styles from './UploadPanel.module.css'
 
 const MODES = [
   { id: 'image', label: 'Image', icon: '🖼', accept: 'image/*',                hint: 'PNG, JPG, WEBP' },
-  { id: 'video', label: 'Video', icon: '🎬', accept: 'video/*,.mp4,.mov',      hint: 'MP4, MOV — max 3s'  },
-  { id: 'audio', label: 'Audio', icon: '🎙', accept: 'audio/*,.wav',  hint: 'WAV, MP3, OGG'  },
+  { id: 'video', label: 'Video', icon: '🎬', accept: 'video/*,.mp4,.mov',      hint: 'MP4, MOV, MKV, WEBM'  },
+  { id: 'audio', label: 'Audio', icon: '🎙', accept: 'audio/*,.wav,.m4a,.flac', hint: 'WAV, MP3, M4A, OGG, FLAC' },
   { id: 'text',  label: 'Text',  icon: '📄', accept: null,            hint: 'Paste any text'  },
 ]
 
-export default function UploadPanel({ onScan, scanning, progress }) {
+export default function UploadPanel({ onScan, scanning, progress, maxMb }) {
   const [mode,     setMode]     = useState('image')
   const [file,     setFile]     = useState(null)
   const [text,     setText]     = useState('')
@@ -85,7 +85,7 @@ export default function UploadPanel({ onScan, scanning, progress }) {
               <>
                 <span className={styles.dropIcon}>{current.icon}</span>
                 <p className={styles.dropTitle}>Drop {current.label.toLowerCase()} here</p>
-                <p className={styles.dropHint}>{current.hint}</p>
+                <p className={styles.dropHint}>{current.hint}{maxMb ? ` · up to ${maxMb} MB` : ''}</p>
               </>
             )}
           </div>
@@ -107,7 +107,7 @@ export default function UploadPanel({ onScan, scanning, progress }) {
           {scanning ? (
             <>
               <span className={styles.spinner} />
-              {progress > 0 && progress < 100 ? `UPLOADING ${progress}%` : 'SCANNING...'}
+              {progress > 0 && progress < 100 ? `WORKING ${progress}%` : 'SCANNING...'}
             </>
           ) : '⬡ SCAN FOR PRIVACY RISKS'}
         </button>

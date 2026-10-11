@@ -19,7 +19,7 @@ function RiskMeter({ count }) {
   )
 }
 
-export default function ResultsPanel({ result, stage }) {
+export default function ResultsPanel({ result, stage, progress }) {
   const [dismissed, setDismissed] = useState(new Set())
   const [revealed,  setRevealed]  = useState(new Set())
 
@@ -28,17 +28,17 @@ export default function ResultsPanel({ result, stage }) {
       <div className={styles.card}>
         <div className={styles.head}>
           <span className={styles.title}>// RESULTS</span>
-          <span className={`${styles.badge} ${styles.idle}`}>WAITING</span>
+          <span className={`${styles.badge} ${styles.idle}`}>{stage ? `${progress ?? 0}%` : 'WAITING'}</span>
         </div>
         <div className={styles.empty}>
           <span className={styles.emptyIcon}>◈</span>
-          <p>Run a scan to see results</p>
+          <p>{stage ? 'Processing locally — large videos can take a few minutes' : 'Run a scan to see results'}</p>
         </div>
       </div>
     )
   }
 
-  const detections = result?.detections || result?.entities || []
+  const detections = (result?.detections || result?.entities || []).filter(d => d.sensitive !== false)
   const visible    = detections.filter((_, i) => !dismissed.has(i))
   const isSensitive = result?.sensitive
 
@@ -93,8 +93,9 @@ export default function ResultsPanel({ result, stage }) {
                 const color  = TYPE_COLORS[type] || TYPE_COLORS.pii
                 const icon   = TYPE_ICONS[type] || '⚠'
                 const label  = det.label || det.text || type
-                const sub    = det.value || det.sub || (det.source ? `source: ${det.source}` : '')
-                const conf   = det.confidence ?? null
+                const sub    = [det.text && det.text !== label ? `"${det.text}"` : null, det.reason || det.source]
+                                 .filter(Boolean).join(' — ')
+                const conf   = det.score ?? det.confidence ?? null
                 return (
                   <div key={i} className={styles.det} style={{ borderLeftColor: color, animationDelay: `${i * 50}ms` }}>
                     <span className={styles.detIcon}>{icon}</span>
@@ -125,6 +126,10 @@ export default function ResultsPanel({ result, stage }) {
         {result?.mode === 'video' && (
           <div className={styles.section}>
             <div className={styles.sectionLabel}>VIDEO INFO</div>
+            {result.thumbnail_b64 && (
+              <img src={`data:image/jpeg;base64,${result.thumbnail_b64}`} alt="First redacted frame"
+                   style={{ width: '100%', borderRadius: 4, marginBottom: 10 }} />
+            )}
             <div className={styles.stats}>
               <div className={styles.stat}>
                 <span style={{ color: 'var(--blue)' }}>{result.frames_processed ?? 0}</span><br/>Frames

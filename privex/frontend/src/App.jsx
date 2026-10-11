@@ -6,178 +6,119 @@ import ResultsPanel from './components/ResultsPanel.jsx'
 import ReviewBoard  from './components/ReviewBoard.jsx'
 import LogTerminal  from './components/LogTerminal.jsx'
 import { useScan }  from './hooks/useScan.js'
-import { proposeRedactions, getLLMConfig, setLLMConfig } from './api/client.js'
+import { proposeRedactions, loadSession, checkHealth } from './api/client.js'
 import styles from './App.module.css'
 
 export default function App() {
   const { stage, result, error, progress, logs, run, reset } = useScan()
 
-  const [reviewData,    setReviewData]    = useState(null)
-  const [proposing,     setProposing]     = useState(false)
-  const [proposeError,  setProposeError]  = useState(null)
-  const [proposeLog,    setProposeLog]    = useState([])
-  const [activeMode,    setActiveMode]    = useState(null)
-
-  // LLM engine state
-  const [llmEngine,    setLlmEngine]    = useState('ollama')
-  const [geminiKey,    setGeminiKey]    = useState('')
-  const [showSettings, setShowSettings] = useState(false)
-  const [savingKey,    setSavingKey]    = useState(false)
-  const [keyMsg,       setKeyMsg]       = useState('')
+  const [reviewData,   setReviewData]   = useState(null)
+  const [proposing,    setProposing]    = useState(false)
+  const [proposeError, setProposeError] = useState(null)
+  const [proposeLog,   setProposeLog]   = useState([])
+  const [activeMode,   setActiveMode]   = useState(null)
+  const [health,       setHealth]       = useState(null)
 
   const scanning = stage && stage !== 'done' && stage !== 'error'
 
+  const log = (lvl, msg) => setProposeLog(l => [...l, { level: lvl, msg, ts: new Date().toLocaleTimeString() }])
+
   useEffect(() => {
-    getLLMConfig().then(r => setLlmEngine(r.data.engine)).catch(() => {})
+    checkHealth().then(r => setHealth(r.data)).catch(() => setHealth(false))
   }, [])
 
-  const handleSaveKey = async () => {
-    setSavingKey(true); setKeyMsg('')
-    try {
-      const r = await setLLMConfig(geminiKey)
-      setLlmEngine(r.data.engine)
-      setKeyMsg(r.data.engine === 'gemini' ? '✓ Gemini active' : '✓ Switched to Ollama')
-    } catch (e) {
-      setKeyMsg('✕ Failed — check key or backend')
-    } finally {
-      setSavingKey(false)
+  // The Chrome extension opens the app at #review/<session_token> after uploading an image.
+  useEffect(() => {
+    const open = () => {
+      const m = window.location.hash.match(/^#review\/([a-f0-9]{32})$/)
+      if (!m) return
+      setActiveMode('image'); setProposing(true); setProposeError(null)
+      log('info', 'Loading image sent from the browser extension…')
+      loadSession(m[1])
+        .then(r => setReviewData(r.data))
+        .catch(e => setProposeError(e.response?.data?.detail || e.message))
+        .finally(() => setProposing(false))
     }
-  }
-
-  const handleClearKey = async () => {
-    setGeminiKey('')
-    try {
-      await setLLMConfig('')
-      setLlmEngine('ollama')
-      setKeyMsg('✓ Switched to Ollama')
-    } catch {}
-  }
+    open()
+    window.addEventListener('hashchange', open)
+    return () => window.removeEventListener('hashchange', open)
+  }, [])
 
   const handleScan = async (mode, payload) => {
     setActiveMode(mode)
-    if (mode === 'image') {
-      setProposing(true); setProposeError(null); setReviewData(null); setProposeLog([])
-      const log = (lvl, msg) => setProposeLog(l => [
-        ...l, { level: lvl, msg, ts: new Date().toLocaleTimeString() }
-      ])
-      try {
-        log('info', 'Uploading image...')
-        log('info', `LLM engine: ${llmEngine}`)
-        log('info', 'Running face detection + OCR...')
-        const resp = await proposeRedactions(payload)
-        log('info', `LLM evaluated ${resp.data.proposals?.length ?? 0} candidates`)
-        log('info', `${resp.data.sensitive_count} sensitive · ${resp.data.safe_count} safe — ready for review`)
-        setReviewData(resp.data)
-      } catch (e) {
-        const msg = e.response?.data?.detail || e.message
-        setProposeError(msg)
-        log('error', `Failed: ${msg}`)
-      } finally {
-        setProposing(false)
-      }
-    } else {
-      // audio, video, text → direct scan
-      run(mode, payload)
+    if (mode !== 'image') { run(mode, payload); return }
+
+    setProposing(true); setProposeError(null); setReviewData(null); setProposeLog([])
+    try {
+      log('info', 'Uploading image…')
+      log('info', 'Running face detection + OCR + PII recognizers…')
+      const resp = await proposeRedactions(payload)
+      log('info', `${resp.data.proposals?.length ?? 0} candidates found`)
+      log('info', `${resp.data.sensitive_count} sensitive · ${resp.data.safe_count} low-risk — ready for review`)
+      setReviewData(resp.data)
+    } catch (e) {
+      const msg = e.response?.data?.detail || e.message
+      setProposeError(msg); log('error', `Failed: ${msg}`)
+    } finally {
+      setProposing(false)
     }
   }
 
   const handleReset = () => {
     reset()
     setReviewData(null); setProposeError(null); setProposeLog([]); setActiveMode(null)
+    if (window.location.hash) history.replaceState(null, '', window.location.pathname)
   }
 
   const showReview  = activeMode === 'image' && (reviewData || proposing || proposeError)
   const showResults = activeMode !== 'image' && (result || stage)
   const pipeStage   = proposing ? 'detect' : reviewData ? 'review' : stage
+  const engines     = health?.engines
 
   return (
     <div className={styles.app}>
-      <Header />
+      <Header health={health} />
 
       <main className={styles.main}>
-
-        {/* Hero */}
         <div className={styles.hero}>
-          <p className={styles.tag}>// LOCAL-FIRST · CONTEXTUAL AI · HUMAN-IN-THE-LOOP</p>
+          <p className={styles.tag}>// LOCAL-ONLY · NO LLM · HUMAN-IN-THE-LOOP</p>
           <h1 className={styles.h1}>
             Detect. Review.<br />
             <span className={styles.accent}>Redact.</span>
           </h1>
         </div>
 
-        {/* LLM engine indicator + settings toggle */}
-        <div className={styles.llmBar}>
-          <span
-            className={styles.llmBadge}
-            style={{
-              color:       llmEngine === 'gemini' ? '#4d9eff' : '#00e676',
-              borderColor: llmEngine === 'gemini' ? 'rgba(77,158,255,.35)' : 'rgba(0,230,118,.35)',
-              background:  llmEngine === 'gemini' ? 'rgba(77,158,255,.07)' : 'rgba(0,230,118,.07)',
-            }}
-          >
-            {llmEngine === 'gemini' ? '◆ GEMINI API' : '⬡ OLLAMA LOCAL'}
-          </span>
-          <button className={styles.settingsBtn} onClick={() => setShowSettings(s => !s)}>
-            {showSettings ? '▲ hide' : '⚙ LLM settings'}
-          </button>
-        </div>
-
-        {/* Gemini key panel */}
-        {showSettings && (
-          <div className={styles.settingsPanel}>
-            <p className={styles.settingsTitle}>LLM Engine</p>
-            <p className={styles.settingsSub}>
-              Leave blank to use Ollama (fully local, private).
-              Paste a Gemini API key to use Google Gemini — faster and more accurate on dense documents.
-            </p>
-            <div className={styles.keyRow}>
-              <input
-                className={styles.keyInput}
-                type="password"
-                placeholder="Paste Gemini API key — or leave blank for Ollama"
-                value={geminiKey}
-                onChange={e => setGeminiKey(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSaveKey()}
-              />
-              <button className={styles.keyBtn} onClick={handleSaveKey} disabled={savingKey}>
-                {savingKey ? '...' : 'Apply'}
-              </button>
-              {(geminiKey || llmEngine === 'gemini') && (
-                <button className={`${styles.keyBtn} ${styles.keyBtnClear}`} onClick={handleClearKey}>
-                  Clear
-                </button>
-              )}
-            </div>
-            {keyMsg && (
-              <p className={styles.keyMsg} style={{ color: keyMsg.startsWith('✕') ? 'var(--red)' : 'var(--green)' }}>
-                {keyMsg}
-              </p>
-            )}
+        {engines && (
+          <div className={styles.llmBar}>
+            <span className={styles.llmBadge}>⬡ ON-DEVICE</span>
+            <span className={styles.engineList}>
+              NER {engines.ner ?? 'off'} · face {engines.face ?? 'off'} · {engines.ocr} · {engines.asr}
+            </span>
           </div>
         )}
 
-        {/* Pipeline */}
         <Pipeline stage={pipeStage} />
 
         {!reviewData ? (
           <>
             <div className={styles.grid}>
-              <UploadPanel onScan={handleScan} scanning={scanning || proposing} progress={progress} />
+              <UploadPanel onScan={handleScan} scanning={scanning || proposing} progress={progress}
+                           maxMb={health?.max_upload_mb} />
 
               {showResults ? (
-                <ResultsPanel result={result} stage={stage} />
+                <ResultsPanel result={result} stage={stage} progress={progress} />
               ) : (
                 <div className={styles.reviewHint}>
                   <span className={styles.hintIcon}>👁</span>
                   <p className={styles.hintTitle}>Human-in-the-Loop Review</p>
                   <p className={styles.hintSub}>
-                    For images: AI proposes redactions with reasoning.<br />
-                    You approve or dismiss before anything is permanently changed.<br />
+                    For images: PRIVEX proposes redactions and explains each one.<br />
+                    You approve or dismiss before anything is changed.<br />
                     Video, audio and text are processed automatically.
                   </p>
                   <div className={styles.hintSteps}>
-                    <div className={styles.step}><span>1</span> AI detects faces + text</div>
-                    <div className={styles.step}><span>2</span> LLM explains each finding</div>
+                    <div className={styles.step}><span>1</span> Detect faces + text</div>
+                    <div className={styles.step}><span>2</span> Explain each finding</div>
                     <div className={styles.step}><span>3</span> You approve or dismiss</div>
                     <div className={styles.step}><span>4</span> Apply & download</div>
                   </div>
@@ -206,8 +147,7 @@ export default function App() {
       </main>
 
       <footer className={styles.footer}>
-        PRIVEX · FastAPI + PaddleOCR + OpenCV DNN + Whisper ·{' '}
-        {llmEngine === 'gemini' ? 'Gemini API' : 'Ollama LLaMA 3'}
+        PRIVEX {health?.version ?? ''} · runs entirely on this computer · RapidOCR + YuNet + spaCy + faster-whisper
       </footer>
     </div>
   )
