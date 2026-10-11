@@ -1,15 +1,17 @@
-fastapi==0.111.0
-uvicorn[standard]==0.29.0
-python-multipart==0.0.9
-pydantic==2.7.1
-
-numpy==1.26.4
-opencv-python==4.6.0.66
-paddlepaddle==2.6.2
-paddleocr==2.7.0.3
-
-torch==2.1.2
---extra-index-url https://download.pytorch.org/whl/cpu
-
-openai-whisper
-requests==2.31.0
+# PRIVEX runtime — pure pip, no system packages (ffmpeg ships inside imageio-ffmpeg).
+# Python 3.10–3.12. Versions pinned to the tested set; see README for why some are capped.
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+pydantic==2.14.0
+numpy==2.5.4
+opencv-python-headless==4.14.0.94     # <5: OpenCV 5 dropped the Caffe importer used by the fallback face model
+rapidocr-onnxruntime==1.4.4           # PaddleOCR models on ONNX Runtime (no paddle/torch)
+onnxruntime==1.20.1
+faster-whisper==1.2.1                 # CTranslate2 Whisper, int8 on CPU (no torch)
+av==15.1.0                            # <16: faster-whisper 1.2 passes an argument PyAV 16+ removed
+imageio-ffmpeg==0.6.0
+spacy==3.8.16
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+pystray==0.19.5
+pillow==12.3.0
