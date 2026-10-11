@@ -1,0 +1,25 @@
+.privex-banner, .privex-toast {
+  all: initial;
+  position: fixed; z-index: 2147483647;
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #d8e4f0; background: #0e1217;
+  border: 1px solid #222d3a; border-left: 3px solid #00e676; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+.privex-banner { width: 360px; padding: 12px 14px; }
+.privex-banner * { font: inherit; color: inherit; box-sizing: border-box; }
+.privex-title { display: block; font-weight: 600; margin-bottom: 4px; }
+.privex-types { display: block; color: #ffb300; font-size: 12px; margin-bottom: 8px; }
+.privex-preview {
+  display: block; white-space: pre-wrap; word-break: break-word; max-height: 110px; overflow: auto;
+  margin: 0 0 10px; padding: 8px; background: #080a0d; border-radius: 4px;
+  font-family: ui-monospace, Consolas, monospace !important; font-size: 12px;
+}
+.privex-actions { display: flex; gap: 6px; }
+.privex-actions button {
+  cursor: pointer; padding: 6px 10px; border-radius: 4px;
+  border: 1px solid #222d3a; background: #151b22;
+}
+.privex-actions button:hover { background: #1c242e; }
+.privex-actions .privex-primary { background: #00e676; color: #04150b; border-color: #00e676; font-weight: 600; }
+.privex-toast { bottom: 20px; right: 20px; padding: 10px 14px; max-width: 420px; }

@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root { --bg:#080a0d; --s1:#0e1217; --s2:#151b22; --b:#222d3a; --g:#00e676; --r:#ff3356; --t:#d8e4f0; --m:#6c8196; }
+    * { box-sizing: border-box; }
+    body { margin: 0; width: 340px; background: var(--bg); color: var(--t); font: 13px/1.4 system-ui, "Segoe UI", sans-serif; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--b); }
+    .logo { font-weight: 800; letter-spacing: .5px; color: var(--g); }
+    .status { font: 11px ui-monospace, Consolas, monospace; }
+    .ok { color: var(--g); } .off { color: var(--r); }
+    section { padding: 12px 14px; border-bottom: 1px solid var(--b); }
+    label.row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; cursor: pointer; }
+    select, textarea, button { font: inherit; color: var(--t); background: var(--s2); border: 1px solid var(--b); border-radius: 4px; }
+    textarea { width: 100%; min-height: 70px; padding: 6px; resize: vertical; }
+    button { padding: 6px 10px; cursor: pointer; }
+    button.primary { background: var(--g); color: #04150b; border-color: var(--g); font-weight: 600; }
+    .muted { color: var(--m); font-size: 12px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: var(--s1); padding: 8px; border-radius: 4px; max-height: 140px; overflow: auto; margin: 8px 0 0; font: 12px ui-monospace, Consolas, monospace; }
+    .actions { display: flex; gap: 6px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">● PRIVEX</span>
+    <span id="status" class="status">checking…</span>
+  </header>
+
+  <section>
+    <label class="row">Paste guard (all sites) <input type="checkbox" id="pasteGuard" /></label>
+    <label class="row">Paste guard on <b id="host">this site</b> <input type="checkbox" id="siteOn" /></label>
+    <label class="row">Redact as
+      <select id="style">
+        <option value="tag">[LABELS]</option>
+        <option value="mask">█████</option>
+      </select>
+    </label>
+  </section>
+
+  <section>
+    <textarea id="text" placeholder="Paste text to check…"></textarea>
+    <div class="actions">
+      <button class="primary" id="scan">Check</button>
+      <button id="copy" hidden>Copy redacted</button>
+    </div>
+    <pre id="out" hidden></pre>
+  </section>
+
+  <section>
+    <div class="actions"><button id="open">Open PRIVEX app</button></div>
+    <p class="muted" id="help">Right-click any image → “Redact this image with PRIVEX”. Everything is processed by the app on this computer.</p>
+  </section>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
