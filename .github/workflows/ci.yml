@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: privex/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: privex/backend/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: python scripts/fetch_models.py --skip-asr
+      - run: python -m pytest -q
+      - name: Benchmarks (Nemotron-PII held-out sample, TAB)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m eval.datasets all
+          python -m eval.run_eval --dataset nemotron --split heldout --limit 1000 --seed 11 --errors 10 --json nemotron.json
+          python -m eval.run_eval --dataset tab --errors 10 --json tab.json
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: eval-results
+          path: |
+            privex/backend/nemotron.json
+            privex/backend/tab.json
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: privex/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: privex/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
