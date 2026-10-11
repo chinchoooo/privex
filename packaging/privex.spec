@@ -36,7 +36,7 @@ a = Analysis(
     datas=datas,
     hiddenimports=hiddenimports,
     excludes=["torch", "paddle", "paddleocr", "tensorflow", "matplotlib", "tkinter", "IPython",
-              "pytest", "whisper"],
+              "pytest", "whisper", "pyarrow", "pandas", "wordfreq", "ftfy"],
     noarchive=False,
 )
 # PyInstaller picks up an old MSVC runtime (14.36) from the Python install. CTranslate2 (Whisper)
