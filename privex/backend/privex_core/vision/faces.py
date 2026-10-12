@@ -55,7 +55,7 @@ class FaceDetector:
             log.warning("No face model found in %s; face detection disabled", settings.models_dir)
         log.info("Face detector: %s", self.backend)
 
-    def detect(self, image: np.ndarray, pad: float = 0.12) -> list[Face]:
+    def detect(self, image: np.ndarray, pad: float = 0.25) -> list[Face]:
         if self.backend is None:
             return []
         h, w = image.shape[:2]
@@ -75,7 +75,7 @@ class FaceDetector:
                 faces.append(Face(x0, y0, x1 - x0, y1 - y0, round(float(s), 3)))
         return faces
 
-    def detect_any_orientation(self, image: np.ndarray, pad: float = 0.12) -> list[Face]:
+    def detect_any_orientation(self, image: np.ndarray, pad: float = 0.25) -> list[Face]:
         """
         Detect faces in all four right-angle orientations (phone photos of ID cards are often
         sideways; the detectors only find upright faces) and merge overlapping hits.
