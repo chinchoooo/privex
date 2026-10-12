@@ -116,3 +116,11 @@ def test_synthetic_eval_floor():
     res = evaluate(generate(200, 99), Analyzer())
     assert res["f1"] > 0.97
     assert res["leak_rate"] < 0.02
+
+
+def test_id_card_unlabelled_name_and_birth_year(analyzer):
+    doc = "GOVERNMENT OF INDIA\nK Karthikeyan\nYear of Birth : 1972\nMale\n2341 2341 2346"
+    found = sensitive(analyzer, doc)
+    assert ("PERSON", "K Karthikeyan") in found
+    assert ("DATE_OF_BIRTH", "1972") in found
+    assert not any(v == "Male" for _, v in found)

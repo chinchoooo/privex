@@ -62,6 +62,36 @@ def run_ocr(image: np.ndarray) -> list[OcrLine]:
     return lines
 
 
+def _read_score(image: np.ndarray) -> float:
+    """Recognition confidence × characters, without the 180° line classifier (so upside-down reads badly)."""
+    import cv2
+    scale = 800 / max(image.shape[:2])
+    if scale < 1:      # only a direction vote — a smaller copy is enough and much faster
+        image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    with _lock:
+        result, _ = _ocr()(image, use_cls=False)
+    return sum(float(s) * len(t) for _, t, s in result or [])
+
+
+def detect_orientation(image: np.ndarray, lines: list[OcrLine]) -> int:
+    """
+    Clockwise rotation (0/90/270) that makes the text upright. Only probes when most OCR lines
+    are vertical — i.e. the photo is sideways — so upright documents cost nothing extra.
+    """
+    if not lines:
+        return 0
+    vertical = 0
+    for l in lines:
+        w = float(l.quad[:, 0].max() - l.quad[:, 0].min())
+        h = float(l.quad[:, 1].max() - l.quad[:, 1].min())
+        vertical += h > 1.5 * w
+    if vertical * 2 <= len(lines):
+        return 0
+    from privex_core.vision.geometry import rotate
+    scores = {k: _read_score(rotate(image, k)) for k in (90, 270)}
+    return max(scores, key=scores.get)
+
+
 def build_document(lines: list[OcrLine]) -> str:
     """
     Arrange OCR lines in reading order (rows top→bottom, items left→right),

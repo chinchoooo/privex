@@ -118,6 +118,25 @@ def caps_name_lines(text: str) -> list[Entity]:
     return out
 
 
+def id_name_lines(text: str) -> list[Entity]:
+    """
+    On identity documents the holder's name often stands alone on a line with no label,
+    in Title case and frequently with an initial ("K Karthikeyan", "Priya R"). OCR may also
+    glue the initial on ("KKarthikeyan"). Lines of ordinary words ("Male", "Government Of India")
+    are rejected by the lexicon check.
+    """
+    out = []
+    for m in re.finditer(r"(?m)^[ \t]*((?:[A-Z][a-z.']*|[A-Z]{1,2}[a-z][A-Za-z'\-]+)"
+                         r"(?:[ \t]+[A-Z][A-Za-z.'\-]*){0,3})[ \t]*$", text):
+        value = m.group(1)
+        letters = re.sub(r"[^A-Za-z]", "", value)
+        if len(letters) < 5 or _NOT_PERSON.search(value) or not plausible_name(value):
+            continue
+        out.append(Entity("PERSON", value, m.start(1), m.end(1), 0.6, "heuristic:id-name-line",
+                          ["stand-alone name-like line on an identity document"]))
+    return out
+
+
 _CAP_SEQ = re.compile(r"\b[A-Z][a-z][A-Za-z'\-]*(?:[ \t]+[A-Z][a-z][A-Za-z'\-]*){1,3}\b")
 
 

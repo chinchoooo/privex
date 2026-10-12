@@ -8,7 +8,8 @@ import cv2
 import numpy as np
 
 from privex_core.text.analyzer import default_analyzer
-from privex_core.vision import ocr
+from privex_core.vision import codes, ocr
+from privex_core.vision.geometry import rotate, unrotate_box
 from privex_core.vision.faces import detector
 
 REDACTION_STYLES = ("black", "blur", "pixelate")
@@ -34,7 +35,7 @@ def propose(image: np.ndarray) -> dict:
     h, w = image.shape[:2]
     proposals = []
 
-    for i, f in enumerate(detector().detect(image)):
+    for i, f in enumerate(detector().detect_any_orientation(image)):
         proposals.append({
             "id": f"face_{i}", "type": "face", "entity_type": "FACE", "label": "Human Face",
             "reason": f"face detector ({detector().backend}) confidence {f.score:.2f}",
@@ -42,12 +43,24 @@ def propose(image: np.ndarray) -> dict:
             "bbox": f.bbox(), "boxes": [f.bbox()], "source": f"face:{detector().backend}",
         })
 
+    for i, b in enumerate(codes.qr_boxes(image)):
+        proposals.append({
+            "id": f"qr_{i}", "type": "code", "entity_type": "QR_CODE", "label": "QR Code",
+            "reason": "QR codes on documents often encode personal details (e.g. Aadhaar secure QR)",
+            "sensitive": True, "approved": True, "confidence": 0.9,
+            "bbox": b, "boxes": [b], "source": "opencv-qr",
+        })
+
+    # Sideways photos: run OCR on an upright copy and map boxes back.
     lines = ocr.run_ocr(image)
+    k = ocr.detect_orientation(image, lines)
+    if k:
+        lines = ocr.run_ocr(rotate(image, k))
     doc = ocr.build_document(lines)
     entities = analyzer.analyze(ocr.normalize_for_analysis(doc))
     for i, e in enumerate(entities):
         e.text = doc[e.start:e.end]
-        boxes = ocr.span_to_boxes(lines, e.start, e.end)
+        boxes = [unrotate_box(b, k, w, h) for b in ocr.span_to_boxes(lines, e.start, e.end)]
         if not boxes:
             continue
         sensitive = e.score >= analyzer.threshold
@@ -63,6 +76,7 @@ def propose(image: np.ndarray) -> dict:
         "image_w": w, "image_h": h,
         "proposals": proposals,
         "ocr_text": doc,
+        "orientation": k,
         "sensitive_count": sum(p["sensitive"] for p in proposals),
         "safe_count": sum(not p["sensitive"] for p in proposals),
         "threshold": analyzer.threshold,

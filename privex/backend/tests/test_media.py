@@ -44,3 +44,30 @@ def test_motion_cover_spans_path():
     b = [{"x": 40, "y": 5, "w": 50, "h": 10}]
     (u,) = _motion_cover(a, b, max_shift=200)
     assert u == {"x": 0, "y": 0, "w": 90, "h": 15}
+
+
+@pytest.mark.parametrize("k", [0, 90, 180, 270])
+def test_unrotate_box_roundtrip(k):
+    """A box drawn on a rotated copy must land on the same pixels in the original."""
+    from privex_core.vision.geometry import rotate, unrotate_box
+    img = np.zeros((60, 100), np.uint8)
+    img[10:20, 30:70] = 255                                  # 40x10 white bar
+    r = rotate(img, k)
+    ys, xs = np.nonzero(r)
+    b = {"x": int(xs.min()), "y": int(ys.min()), "w": int(xs.max() - xs.min() + 1), "h": int(ys.max() - ys.min() + 1)}
+    assert unrotate_box(b, k, 100, 60) == {"x": 30, "y": 10, "w": 40, "h": 10}
+
+
+def test_faces_found_in_sideways_photo():
+    """Sideways faces are found by checking all four orientations."""
+    from privex_core.vision.faces import detector
+    from privex_core.vision.geometry import rotate
+    import cv2, glob
+    samples = sorted(glob.glob("outputs/orig_*.jpg"))
+    if not samples or detector().backend is None:
+        pytest.skip("no local sample image / face model")
+    img = cv2.imread(samples[0])
+    upright = len(detector().detect(img))
+    if upright == 0:
+        pytest.skip("sample has no upright face")
+    assert len(detector().detect_any_orientation(rotate(img, 90))) >= 1

@@ -75,6 +75,24 @@ class FaceDetector:
                 faces.append(Face(x0, y0, x1 - x0, y1 - y0, round(float(s), 3)))
         return faces
 
+    def detect_any_orientation(self, image: np.ndarray, pad: float = 0.12) -> list[Face]:
+        """
+        Detect faces in all four right-angle orientations (phone photos of ID cards are often
+        sideways; the detectors only find upright faces) and merge overlapping hits.
+        """
+        from privex_core.vision.geometry import iou, rotate, unrotate_box
+        H, W = image.shape[:2]
+        found: list[Face] = []
+        for k in (0, 90, 180, 270):
+            for f in self.detect(rotate(image, k), pad):
+                b = unrotate_box(f.bbox(), k, W, H)
+                found.append(Face(b["x"], b["y"], b["w"], b["h"], f.score))
+        kept: list[Face] = []
+        for f in sorted(found, key=lambda f: -f.score):
+            if all(iou(f.bbox(), g.bbox()) < 0.3 for g in kept):
+                kept.append(f)
+        return kept
+
     def _detect_yunet(self, img):
         self._yunet.setInputSize((img.shape[1], img.shape[0]))
         _, dets = self._yunet.detect(img)

@@ -365,6 +365,11 @@ RECOGNIZERS: list[PatternRecognizer] = [
         negative_penalty=0.2,
     ),
     PatternRecognizer(
+        "birth_year", "DATE_OF_BIRTH",       # "Year of Birth : 1972" (Aadhaar), "YOB 1985"
+        [B + r"(?i:year\s*of\s*birth|birth\s*year|yob)\s*[:\-]?\s*(?P<v>(?:19|20)\d{2})" + E],
+        base=0.85, window_before=0, window_after=0,
+    ),
+    PatternRecognizer(
         "postal_code", "POSTAL_CODE",
         [B + r"[1-9]\d{2}\s?\d{3}" + E, B + r"\d{5}(?:-\d{4})?" + E],
         base=0.4, require_context=True, context_boost=0.3, window_before=25, window_after=12,

@@ -41,6 +41,7 @@ class Analyzer:
         if id_doc:
             if self.use_ner:
                 candidates.extend(ner.caps_name_lines(text))
+                candidates.extend(ner.id_name_lines(text))
             for c in candidates:
                 if c.type in ID_DOC_BOOST_TYPES:
                     c.score = min(1.0, c.score + ID_DOC_BOOST)
